@@ -38,6 +38,11 @@ public class Shorten {
         this.lastSeenDate = lastSeenDate;
     }
 
+    public Shorten(String url, String shortcode) {
+        this.url = url;
+        this.shortcode = shortcode;
+    }
+
     public Long getId() {
         return this.id;
     }
