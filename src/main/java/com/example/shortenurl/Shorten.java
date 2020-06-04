@@ -41,6 +41,7 @@ public class Shorten {
     public Shorten(String url, String shortcode) {
         this.url = url;
         this.shortcode = shortcode;
+        this.redirectCount = 0;
     }
 
     public Long getId() {

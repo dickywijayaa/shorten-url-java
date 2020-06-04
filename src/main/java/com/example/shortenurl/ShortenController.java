@@ -2,6 +2,7 @@ package com.example.shortenurl;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Date;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -24,16 +25,22 @@ public class ShortenController {
     @Autowired
     ShortenRepository shortenRepository;
 
+    Message message = new Message();
+    Response result = new Response(message.INTERNAL_SERVER_ERROR_MESSAGE);
+
     @RequestMapping(value = "/{code}", method = RequestMethod.GET)
     public ResponseEntity<Object> GetURLFromShortcode(@PathVariable String code) throws URISyntaxException {
         Shorten data = shortenRepository.findByShortcode(code);
 
         if (data == null) {
-            Message message = new Message();
-            Response result = new Response(message.SHORTCODE_NOT_EXISTS_IN_DATABASE);
-
+            result.message = message.SHORTCODE_NOT_EXISTS_IN_DATABASE;
             return new ResponseEntity<>(result, HttpStatus.NOT_FOUND);
         }
+
+        // update code stats
+        data.setRedirectCount(data.getRedirectCount() + 1);
+        data.setLastSeenDate(new Date());
+        shortenRepository.save(data);
 
         URI url = new URI(data.getUrl());
         HttpHeaders httpHeaders = new HttpHeaders();
@@ -43,12 +50,8 @@ public class ShortenController {
 
     @RequestMapping(value = "", method = RequestMethod.POST)
     public ResponseEntity<Response> PostShorten(@RequestBody Map<String, String> payload) {
-        Message message = new Message();
-
         String url = payload.get("url");
         String shortcode = payload.get("shortcode");
-
-        Response result = new Response(message.INTERNAL_SERVER_ERROR_MESSAGE);
 
         if (url == null) {
             result.message = message.REQUIRED_URL_INPUT;
@@ -68,6 +71,12 @@ public class ShortenController {
         if (!Pattern.matches("^[0-9a-zA-Z_]{6}$", shortcode)) {
             result.message = message.INVALID_REGEX_SHORTCODE_INPUT;
             return new ResponseEntity<>(result, HttpStatus.BAD_REQUEST);
+        }
+
+        Shorten check = shortenRepository.findByShortcode(shortcode);
+        if (check != null) {
+            result.message = message.SHORTCODE_ALREADY_EXISTS_IN_DATABASE;
+            return new ResponseEntity<>(result, HttpStatus.UNPROCESSABLE_ENTITY);
         }
 
         Shorten data = new Shorten(url, shortcode);
